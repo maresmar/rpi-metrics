@@ -1,0 +1,91 @@
+import subprocess
+import re
+import time
+from prometheus_client import Gauge, make_wsgi_app
+from wsgiref.simple_server import make_server
+
+# Gauge for WiFi connected time
+connected_time_metric = Gauge(
+    'wifi_station_connected_time_seconds',
+    'Connection time of connected WiFi stations',
+    ['mac']
+)
+
+# ADC gauge without ID label, only name and type
+adc_metric = Gauge(
+    'pi5_adc_value',
+    'Pi5 ADC voltage/current reading',
+    ['name', 'type']  # type = current or volt
+)
+
+def parse_iw_station_dump():
+    try:
+        output = subprocess.check_output(
+            ['iw', 'dev', 'wlan0', 'station', 'dump'],
+            text=True
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Error calling iw: {e}")
+        return []
+
+    stations = []
+    current_mac = None
+    current_info = {}
+
+    for line in output.strip().splitlines():
+        line = line.strip()
+        mac_match = re.match(r'^Station\s+([0-9a-f:]{17})', line)
+        if mac_match:
+            if current_mac and 'connected_time' in current_info:
+                stations.append(current_info)
+            current_mac = mac_match.group(1)
+            current_info = {'mac': current_mac}
+        elif line.startswith("connected time:") and current_mac:
+            match = re.search(r'connected time:\s+(\d+)\s+seconds', line)
+            if match:
+                current_info['connected_time'] = int(match.group(1))
+
+    if current_mac and 'connected_time' in current_info:
+        stations.append(current_info)
+
+    return stations
+
+def update_metrics():
+    # Update WiFi connected time
+    stations = parse_iw_station_dump()
+    for station in stations:
+        connected_time_metric.labels(mac=station['mac']).set(station['connected_time'])
+
+    # Update ADC metrics
+    res = subprocess.run(["vcgencmd", "pmic_read_adc"], capture_output=True)
+    lines = res.stdout.decode("utf-8").splitlines()
+    for line in lines:
+        m = re.search(r'([A-Z_0-9]+)_[VA] (current|volt)\([0-9]+\)=([0-9.]+)', line)
+        if m:
+            name = m.group(1)
+            typ = m.group(2)
+            val = float(m.group(3))
+            adc_metric.labels(name=name, type=typ).set(val)
+
+def main():
+    # Create WSGI app for Prometheus metrics
+    app = make_wsgi_app()
+
+    # Start WSGI HTTP server on localhost only (127.0.0.1:8000)
+    httpd = make_server('127.0.0.1', 8000, app)
+    print("Serving metrics on http://127.0.0.1:8000/metrics")
+
+    # Run the metrics update loop in background thread
+    import threading
+    def metrics_loop():
+        while True:
+            update_metrics()
+            time.sleep(15)
+
+    threading.Thread(target=metrics_loop, daemon=True).start()
+
+    # Serve forever
+    httpd.serve_forever()
+
+if __name__ == "__main__":
+    main()
