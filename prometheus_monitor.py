@@ -1,8 +1,10 @@
 import re
+import os
 import subprocess
 import time
 from wsgiref.simple_server import make_server
 
+from dotenv import load_dotenv
 from prometheus_client import Gauge, make_wsgi_app
 from PyP100 import PyP110
 
@@ -81,6 +83,8 @@ def update_p110_metrics():
         data = p110.getEnergyUsage()
         power_energy_metric.labels(ip=P110_HOST).set(data["month_energy"])
         power_current_metric.labels(ip=P110_HOST).set(data["current_power"])
+    except e:
+        print(f"p110 error {e}")
 
 
 def update_metrics():
