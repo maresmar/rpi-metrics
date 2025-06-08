@@ -1,1 +1,3 @@
 prometheus_client==0.22.0
+git+https://github.com/almottier/TapoP100.git@main
+dotenv==0.9.9
