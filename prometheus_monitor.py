@@ -15,14 +15,14 @@ P110_HOST = os.getenv("P110_HOST")
 
 # Gauge for WiFi connected time
 connected_time_metric = Gauge(
-    'wifi_station_connected_time_seconds',
+    'rpi_wifi_station_connected_time_seconds',
     'Connection time of connected WiFi stations',
     ['mac']
 )
 
 # ADC gauge without ID label, only name and type
 adc_metric = Gauge(
-    'pi5_adc_value',
+    'rpi_adc_value',
     'Pi5 ADC voltage/current reading',
     ['name', 'type']  # type = current or volt
 )
