@@ -1,0 +1,15 @@
+[Unit]
+Description=Raspberry PI metrics
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{ base_dir }}
+ExecStart={{ venv_dir }}/bin/python3 -u rpi-metrics.py
+Restart=on-failure
+RestartSec=5
+User={{ server_user }}
+
+[Install]
+WantedBy=multi-user.target
