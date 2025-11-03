@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+import threading
 import time
 from wsgiref.simple_server import make_server
 
@@ -118,11 +119,14 @@ def main():
     print("Serving metrics on http://127.0.0.1:8000/metrics")
 
     # Serve forever
-    httpd.serve_forever()
+    def server_loop():
+        httpd.serve_forever()
+
+    threading.Thread(target=server_loop, daemon=True).start()
 
     while True:
         update_metrics()
-        time.sleep(60)
+        time.sleep(30)
 
 
 if __name__ == "__main__":
