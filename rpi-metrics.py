@@ -1,5 +1,5 @@
-import re
 import os
+import re
 import subprocess
 import time
 from wsgiref.simple_server import make_server
@@ -7,7 +7,6 @@ from wsgiref.simple_server import make_server
 from dotenv import load_dotenv
 from prometheus_client import Gauge, make_wsgi_app
 from PyP100 import PyP110
-
 
 load_dotenv()
 P110_USERNAME = os.getenv("P110_USERNAME")
@@ -83,7 +82,7 @@ def update_p110_metrics():
         data = p110.getEnergyUsage()
         power_energy_metric.labels(ip=P110_HOST).set(data["month_energy"])
         power_current_metric.labels(ip=P110_HOST).set(data["current_power"])
-    except e:
+    except Exception as e:
         print(f"p110 error {e}")
 
 
@@ -118,18 +117,12 @@ def main():
     httpd = make_server('127.0.0.1', 8000, app)
     print("Serving metrics on http://127.0.0.1:8000/metrics")
 
-    # Run the metrics update loop in background thread
-    import threading
-
-    def metrics_loop():
-        while True:
-            update_metrics()
-            time.sleep(15)
-
-    threading.Thread(target=metrics_loop, daemon=True).start()
-
     # Serve forever
     httpd.serve_forever()
+
+    while True:
+        update_metrics()
+        time.sleep(60)
 
 
 if __name__ == "__main__":
