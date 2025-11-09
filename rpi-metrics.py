@@ -31,8 +31,8 @@ adc_metric = Gauge(
 
 # Gauge for power
 power_energy_metric = Gauge(
-    'power_energy_kWhs',
-    'kWh of energy consumed per month',
+    'power_energy_Whs_total',
+    'Wh of energy consumed per month',
     ['ip']
 )
 
